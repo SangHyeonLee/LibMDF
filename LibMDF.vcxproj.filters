@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Text Include="ReadMe.txt" />
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="mdf">
+      <UniqueIdentifier>{b7c64f42-6a40-4fd4-bb02-b03531f29107}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="mdf\datatype">
+      <UniqueIdentifier>{4fc5f089-9e21-4fb7-8e8f-f303c7c03298}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="include\mdf\mdf_lmdb.h">
+      <Filter>mdf</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mdf\datatype\data_info.h">
+      <Filter>mdf\datatype</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mdf\datatype\mpl.h">
+      <Filter>mdf\datatype</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mdf\datatype\pagedb.h">
+      <Filter>mdf\datatype</Filter>
+    </ClInclude>
+    <ClInclude Include="include\mdf\datatype\universal_slotted_page.h">
+      <Filter>mdf\datatype</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
