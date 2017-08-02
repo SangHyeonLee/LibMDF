@@ -1,6 +1,7 @@
-#ifndef _LibGSTREAM_SAMPLES_PAGEDB_GENERATOR_UTILITY_H_
-#define _LibGSTREAM_SAMPLES_PAGEDB_GENERATOR_UTILITY_H_
+#ifndef _LibMDF_SAMPLES_PAGEDB_GENERATOR_UTILITY_H_
+#define _LibMDF_SAMPLES_PAGEDB_GENERATOR_UTILITY_H_
 #include <mdf\datatype\universal_slotted_page.h>
+
 
 using namespace std;
 
@@ -24,4 +25,4 @@ namespace imageProcessing {
 
 
 
-#endif
+#endif //!_LibMDF_SAMPLES_PAGEDB_GENERATOR_UTILITY_H_

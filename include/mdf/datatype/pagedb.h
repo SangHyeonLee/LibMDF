@@ -182,6 +182,7 @@ struct page_traits {   //traits 뭐하는놈?
 enum class generator_error_t { // 에러체크
 	success,
 	empty_data,
+	fail_complete
 };
 // RID Table 생성기
 template <typename PageTy,
@@ -300,8 +301,9 @@ public:
 	using vertex_t = vertex_template<serial_id_t, key_payload_t>;
 
 	pagedb_generator(rid_table_t& rid_table_);
-	using record_pair_t = std::pair<record_t* /* record */, serial_id_t /*  */>; //반환값 
+	using record_pair_t = std::pair<record_t* /* record */, vertex_t /*  */>; //반환값 
 	using record_result_t = std::function<record_pair_t()>; // 함수
+	
 
 	//using edgeset_t = std::vector<edge_t>;
 	//using edge_iteration_result_t = std::pair<edgeset_t /* sorted vertex #'s edgeset */, serial_id_t /* max_vid */>;
@@ -316,8 +318,20 @@ public:
 	*/
 	//std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::generateDB(record_result_t record_function, std::ostream& os)
 
+	// Enabled if vertex_payload_t is void type.
 	template <typename PayloadTy = key_payload_t>
 	typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type generateDB(record_result_t record_function,const char* filename);
+	// Enabled if vertex_payload_t is non-void type.
+	template <typename PayloadTy = key_payload_t>
+	typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type generateDB(record_result_t record_function, const char* filename);
+
+	template <typename PayloadTy = key_payload_t>
+	typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type UpdateDB(record_result_t record_function, const char* filename);
+
+	generator_error_t Commit();
+	// Enabled if vertex_payload_t is non-void type.
+	//template <typename PayloadTy = key_payload_t>
+	//typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type UpdateDB(record_result_t record_function, const char* filename);
 	/*
 	// Enabled if vertex_payload_t is void type.
 	template <typename PayloadTy = vertex_payload_t>
@@ -345,6 +359,7 @@ protected:
 	void issue_page(std::ostream& os, page_flag_t flags);
 //	void update_list_buffer(edge_t* edges, ___size_t num_edges);
 	void update_buffer(record_t* record);
+
 
 	rid_table_t& rid_table;
 	___size_t  sid_counter;
@@ -375,7 +390,7 @@ void PAGEDB_GENERATOR::init()
 	num_pages = 0;
 }
 
-//페이지 디비 생성
+//페이지 디비 생성 void.
 PAGEDB_GENERATOR_TEMPALTE
 template <typename PayloadTy>
 typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::generateDB(record_result_t record_function,const char* filename)
@@ -397,8 +412,8 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 	// Init phase
 	this->init();
 	record_pair_t result = record_function(); //  함수에서 레코드 페어 받아옴 
-	//result 1 = record , 2 = bool
-	if (result.second == false)
+	//result 1 = record , 2 = vertex
+	if (result.first == NULL)
 		return generator_error_t::empty_data; // initialize failed;
 	//sid = result.first[0].src;
 	//max_vid = result.second;
@@ -425,14 +440,14 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 		*/
 		
 		
-		insert_vertex(page_os, vertex_t{ sid }, result.first);
+		insert_vertex(page_os, result.second, result.first);
 		//iteration_per_vertex(os, vertex_t{ vid }, result.first.data(), result.first.size());
 		// 위 함수로 들어가서 스몰 페이지 만드는걸로 들어가서 애드 small 페이지 해준다.
 		///슬롯 만들어서 넣어주고.
 		sid += 1; // sid 증가해주고 
 
 		result = record_function(); // 다시 넣어주고 
-		if (0 == result.second) // 펄스 나오면 반복문 끝난다.
+		if (result.first == NULL) // 레코드가 없으면 끝내준다.
 			break; // parsing error?
 
 
@@ -449,6 +464,175 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 	puts("@ write rid table \n");
 	printf("rid_table size ---- %d\n", rid_table.size());
 	for(int i = 0 ; i< rid_table.size(); i++)
+		printf("rid_table %d %d \n", rid_table[i].start_sid, rid_table[i].auxiliary);
+
+
+	//print2_rid_table(rid_table);
+	write_rid_table(rid_table, rid_table_os);
+	rid_table_os.close();
+	puts("@ close os \n");
+	puts("@ end GenerateDB ----------------------------------\n");
+	return generator_error_t::success;
+}
+
+//non - void key payload
+PAGEDB_GENERATOR_TEMPALTE
+template <typename PayloadTy>
+typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::generateDB(record_result_t record_function, const char* filename)
+{
+	/* 수정해야됨  vertex label 작업할것.*/
+
+	puts("@ start GenerateDB ----------------------------------\n");
+	serial_id_t sid = 0;
+	char pages_filename[256];
+	char rid_table_filename[256];
+
+	sprintf_s(pages_filename, "%s.pages", filename);
+	sprintf_s(rid_table_filename, "%s.rid_table", filename);
+	std::ofstream page_os{ pages_filename , std::ios::out | std::ios::binary };
+	std::ofstream rid_table_os{ rid_table_filename, std::ios::out | std::ios::binary };
+	//record_t* record;
+	//serial_id_t max_vid;
+
+	// Init phase
+	this->init();
+	record_pair_t result = record_function(); //  함수에서 레코드 페어 받아옴 
+											  //result 1 = record , 2 = vertex
+	if (result.first == NULL)
+		return generator_error_t::empty_data; // initialize failed;
+											  //sid = result.first[0].src;
+											  //max_vid = result.second;
+	if ((builder_t::SlotSize + sizeof(result.first) + result.first->size) > builder_t::DataSectionSize) {
+		//large rid
+		issue_sp(rid_table, 0);
+	}
+	else {
+		issue_sp(rid_table, 0);
+	}
+	//int count = 0; // test 
+	//char test2[256]; //test
+	// Iteration
+	do
+	{
+		/* it is create pic test.
+
+		record_t* test = result.first;
+		sprintf_s(test2, "test%d.jpeg", count++); // test
+		printf("%s\n", test2);
+		std::ofstream ofs(test2, ios::trunc | ios::binary);// test
+		ofs.write(reinterpret_cast<const char*>(test->data), test->size);// test
+		ofs.close();
+		*/
+
+
+		insert_vertex(page_os, result.second, result.first);
+		//iteration_per_vertex(os, vertex_t{ vid }, result.first.data(), result.first.size());
+		// 위 함수로 들어가서 스몰 페이지 만드는걸로 들어가서 애드 small 페이지 해준다.
+		///슬롯 만들어서 넣어주고.
+		sid += 1; // sid 증가해주고 
+
+		result = record_function(); // 다시 넣어주고 
+		if (result.first == NULL) // 레코드가 없으면 끝내준다.
+			break; // parsing error?
+
+
+	} while (true);
+
+	//while (max_vid >= vid)
+	//	iteration_per_vertex(os, vertex_t{ vid++ }, nullptr, 0);
+
+	puts("@ flush page os \n");
+	flush(page_os);
+	page_os.close();
+	puts("@ close os \n");
+
+	puts("@ write rid table \n");
+	printf("rid_table size ---- %d\n", rid_table.size());
+	for (int i = 0; i< rid_table.size(); i++)
+		printf("rid_table %d %d \n", rid_table[i].start_sid, rid_table[i].auxiliary);
+
+
+	//print2_rid_table(rid_table);
+	write_rid_table(rid_table, rid_table_os);
+	rid_table_os.close();
+	puts("@ close os \n");
+	puts("@ end GenerateDB ----------------------------------\n");
+	return generator_error_t::success;
+}
+//페이지 디비 생성 void.
+PAGEDB_GENERATOR_TEMPALTE
+template <typename PayloadTy>
+typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::UpdateDB(record_result_t record_function, const char* filename)
+{
+	/* 수정완료.*/
+
+	puts("@ start GenerateDB ----------------------------------\n");
+	serial_id_t sid = 0;
+	char pages_filename[256];
+	char rid_table_filename[256];
+
+	sprintf_s(pages_filename, "%s.pages", filename);
+	sprintf_s(rid_table_filename, "%s.rid_table", filename);
+	std::ofstream page_os{ pages_filename , std::ios::out | std::ios::binary };
+	std::ofstream rid_table_os{ rid_table_filename, std::ios::out | std::ios::binary };
+	//record_t* record;
+	//serial_id_t max_vid;
+
+	// Init phase
+	this->init();
+	record_pair_t result = record_function(); //  함수에서 레코드 페어 받아옴 
+											  //result 1 = record , 2 = vertex
+	if (result.first == NULL)
+		return generator_error_t::empty_data; // initialize failed;
+											  //sid = result.first[0].src;
+											  //max_vid = result.second;
+	if ((builder_t::SlotSize + sizeof(result.first) + result.first->size) > builder_t::DataSectionSize) {
+		//large rid
+		issue_sp(rid_table, 0);
+	}
+	else {
+		issue_sp(rid_table, 0);
+	}
+	//int count = 0; // test 
+	//char test2[256]; //test
+	// Iteration
+	do
+	{
+		/* it is create pic test.
+
+		record_t* test = result.first;
+		sprintf_s(test2, "test%d.jpeg", count++); // test
+		printf("%s\n", test2);
+		std::ofstream ofs(test2, ios::trunc | ios::binary);// test
+		ofs.write(reinterpret_cast<const char*>(test->data), test->size);// test
+		ofs.close();
+		*/
+
+
+		insert_vertex(page_os, result.second, result.first);
+		//iteration_per_vertex(os, vertex_t{ vid }, result.first.data(), result.first.size());
+		// 위 함수로 들어가서 스몰 페이지 만드는걸로 들어가서 애드 small 페이지 해준다.
+		///슬롯 만들어서 넣어주고.
+		sid += 1; // sid 증가해주고 
+
+		result = record_function(); // 다시 넣어주고 
+		if (result.first == NULL) // 레코드가 없으면 끝내준다.
+			break; // parsing error?
+
+
+	} while (true);
+
+	//while (max_vid >= vid)
+	//	iteration_per_vertex(os, vertex_t{ vid++ }, nullptr, 0);
+
+	puts("@ flush page os \n");
+	flush(page_os);
+	page_os.close();
+	puts("@ close os \n");
+
+	puts("@ write rid table \n");
+	printf("rid_table size ---- %d\n", rid_table.size());
+	for (int i = 0; i< rid_table.size(); i++)
 		printf("rid_table %d %d \n", rid_table[i].start_sid, rid_table[i].auxiliary);
 
 

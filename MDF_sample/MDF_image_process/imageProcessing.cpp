@@ -18,8 +18,10 @@ using namespace std;
 페이지 만들어야됨 ..
 
 */
+
 namespace imageProcessing {
 	//Basic Setting
+
 	using serial_id_t = uint64_t;
 	using data_info_t = void;
 	using record_offset_t = uint64_t;
@@ -55,27 +57,30 @@ namespace imageProcessing {
 
 
 
-	std::pair< page_traits::record_t*, bool> image_to_pair(std::string path, DIR *dir) {
+	std::pair< page_traits::record_t*, page_traits::vertex_t> image_to_pair(std::string path, DIR *dir, page_traits::serial_id_t &sid) {
 		page_traits::record_t* record;
+		page_traits::vertex_t vertex; // serial_id , payload
+		vertex.serial_id = sid++;
 		struct dirent *ent; // file info
 		struct stat buf; // file size
 		if ((ent = readdir(dir)) == NULL) {
-			record = (page_traits::record_t *)malloc(sizeof(page_traits::record_t));
-			return std::make_pair(record, false);
+			record = NULL;
+			return std::make_pair(record, vertex);
 		}
+		
+		printf("sid = %d\n", sid);
 		printf("name = %s\n", ent->d_name);
 		string full_path = path + "/" + ent->d_name;
 		stat(full_path.c_str(), &buf);
 		const size_t temp_size = buf.st_size;
 		record = (page_traits::record_t *)malloc(sizeof(page_traits::record_t) + temp_size);
-		serial_id_t sid;
+		
 		std::ifstream ifs(full_path, ios::binary);
 
-
 		image_to_record(ifs, record, temp_size);
-		return std::make_pair(record, true);
+		return std::make_pair(record, vertex);
 	}
-
+	
 	// Function of genetating PageDB
 	int generate_page_db(const char* filepath, const char* pageDB_name)
 	{
@@ -93,10 +98,10 @@ namespace imageProcessing {
 			readdir(dir); // . dir
 			readdir(dir); // .. dir
 		}
-		
+		page_traits::serial_id_t sid = 0;
 		// Generate pageDB 
 		generator_traits::pagedb_generator_t pagedb_generator{ mdf::generate_rid_table<generator_traits::rid_tuple_t, std::vector>() };
-		pagedb_generator.generateDB(std::bind(image_to_pair, std::ref(filepath), std::ref(dir)), pageDB_name);
+		pagedb_generator.generateDB(std::bind(image_to_pair, std::ref(filepath), std::ref(dir),std::ref(sid)), pageDB_name);
 
 		return 0; // SUCCESS
 
@@ -130,7 +135,7 @@ namespace imageProcessing {
 			/* iterate slot size */
 			for (size_t i = 0; i < num; i++) {
 				sprintf_s(name, "%s/p%d.jpeg", destPath, count++); // image name
-				
+				//printf("slot sid = %d\n", pages[j].slot(i).serial_id);
 				ofs.open(name, ios::trunc | ios::binary);
 				/* get record and write image */
 				auto record = pages[j].record_start(pages[j].slot(i));
@@ -175,8 +180,8 @@ namespace imageProcessing {
 		char page_name[256];
 		sprintf_s(rid_name, "%s.rid_table", filename);
 		sprintf_s(page_name, "%s.pages", filename);
-		rid_table_t rtable = mdf::read_rid_table<rid_tuple_t, std::vector>("imageTest.rid_table");
-		page_cont_t pages = mdf::read_pages<page_t, std::vector>("imageTest.pages");
+		rid_table_t rtable = mdf::read_rid_table<rid_tuple_t, std::vector>(rid_name);
+		page_cont_t pages = mdf::read_pages<page_t, std::vector>(page_name);
 		size_t count = 0,page_id = 0;
 		size_t pages_size = pages.size();
 		size_t page_size = PageSize;
@@ -298,8 +303,11 @@ namespace imageProcessing {
 	}
 	*/
 	// need to lmdb to pageDB for creating record pair
-	std::pair< page_traits::record_t*, bool> lmdb_to_pair(mdf::lmdb::Cursor *cursor){
+	std::pair< page_traits::record_t*, page_traits::vertex_t> lmdb_to_pair(mdf::lmdb::Cursor *cursor, page_traits::serial_id_t &serial_id){
 		page_traits::record_t* record;
+		page_traits::vertex_t vertex;
+		vertex.serial_id = serial_id++;
+		printf("sid = %d\n", serial_id);
 		if(cursor->valid()) {
 			const string value = cursor->value_str_t();
 			record = (page_traits::record_t *)malloc(sizeof(page_traits::record_t) + value.size());
@@ -308,11 +316,11 @@ namespace imageProcessing {
 			memmove(record->data, value.c_str(), record->size);
 
 			cursor->Next();
-			return std::make_pair(record, true);
+			return std::make_pair(record, vertex);
 		}
 		else {
-			record = (page_traits::record_t *)malloc(sizeof(page_traits::record_t));
-			return std::make_pair(record, false);
+			record = NULL;
+			return std::make_pair(record, vertex);
 		}
 	}
 	void lmdb_to_pageDB(const char* path,const char* filename) {
@@ -324,8 +332,9 @@ namespace imageProcessing {
 		sprintf_s(buf, "%s/%s", path, filename);
 		puts("Setting complete \n");
 		cout << buf << endl;
+		page_traits::serial_id_t sid = 0;
 		generator_traits::pagedb_generator_t pagedb_generator{ mdf::generate_rid_table<generator_traits::rid_tuple_t, std::vector>() };
-		pagedb_generator.generateDB(std::bind(lmdb_to_pair, std::ref(cursor)), buf);
+		pagedb_generator.generateDB(std::bind(lmdb_to_pair, std::ref(cursor),std::ref(sid)), buf);
 		puts("pageDB generated...\n");
 
 	}

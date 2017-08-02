@@ -5,6 +5,8 @@ VisualStudioVersion = 14.0.25420.1
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MDF_image_process", "MDF_image_process\MDF_image_process.vcxproj", "{6FD6EC7E-F7F0-4FA7-9B38-74481D5B89F2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MDF_label_image_process", "MDF_label_image_process\MDF_label_image_process.vcxproj", "{5F736EB8-76FC-48DD-B128-22D21F52CAE0}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -21,6 +23,14 @@ Global
 		{6FD6EC7E-F7F0-4FA7-9B38-74481D5B89F2}.Release|x64.Build.0 = Release|x64
 		{6FD6EC7E-F7F0-4FA7-9B38-74481D5B89F2}.Release|x86.ActiveCfg = Release|Win32
 		{6FD6EC7E-F7F0-4FA7-9B38-74481D5B89F2}.Release|x86.Build.0 = Release|Win32
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Debug|x64.ActiveCfg = Debug|x64
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Debug|x64.Build.0 = Debug|x64
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Debug|x86.ActiveCfg = Debug|Win32
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Debug|x86.Build.0 = Debug|Win32
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Release|x64.ActiveCfg = Release|x64
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Release|x64.Build.0 = Release|x64
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Release|x86.ActiveCfg = Release|Win32
+		{5F736EB8-76FC-48DD-B128-22D21F52CAE0}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

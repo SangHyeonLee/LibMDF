@@ -1,0 +1,6 @@
+#ifndef _LibMDF_LABEL_IMAGE_PROCESS_H_
+#define _LibMDF_LABEL_IMAGE_PROCESS_H_
+
+
+
+#endif // !_LibMDF_LABEL_IMAGE_PROCESS_H_
