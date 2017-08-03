@@ -495,13 +495,13 @@ public:
 	}*/
 	// Enabled if key_payload_t is non-void type.
 	template <typename PayloadTy = key_payload_t>
-	offset_t add_slot(serial_id_t vertex_id, typename std::enable_if<!std::is_void<PayloadTy>::value, key_payload_t>::type payload)
+	offset_t add_slot(serial_id_t serial_id, typename std::enable_if<!std::is_void<PayloadTy>::value, key_payload_t>::type payload)
 	{
 		this->footer.rear -= sizeof(slot_t);
 		slot_t& slot = reinterpret_cast<slot_t&>(this->data_section[this->footer.rear]);
-		slot.vertex_id = vertex_id;
+		slot.serial_id = serial_id;
 		slot.record_offset = static_cast<record_offset_t>(this->footer.front);
-		slot.vertex_payload = payload;
+		slot.key_payload = payload;
 		//this->footer.front += sizeof(record_size_t);
 		return this->number_of_slots() - 1;
 	}
@@ -847,12 +847,12 @@ struct vertex_template
 	template <typename __builder_t>
 	void to_slot(__builder_t& target_page) const
 	{
-		target_page.add_slot(vertex_id, payload);
+		target_page.add_slot(serial_id, payload);
 	}
 	template <typename __builder_t>
 	void to_slot_ext(__builder_t& target_page) const
 	{
-		target_page.add_slot_ext(vertex_id, payload);
+		target_page.add_slot_ext(serial_id, payload);
 	}
 };
 
