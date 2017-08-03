@@ -18,6 +18,9 @@
     <ClInclude Include="util.h">
       <Filter>헤더 파일</Filter>
     </ClInclude>
+    <ClInclude Include="stb_image_write.h">
+      <Filter>헤더 파일</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="label_image_processing.cpp">

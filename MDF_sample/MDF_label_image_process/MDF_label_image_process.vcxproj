@@ -89,6 +89,7 @@
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
       <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <Link>
       <GenerateDebugInformation>true</GenerateDebugInformation>
@@ -123,6 +124,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClInclude Include="stb_image_write.h" />
     <ClInclude Include="util.h" />
   </ItemGroup>
   <ItemGroup>
@@ -135,11 +137,17 @@
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
     <Import Project="..\packages\dirent.1.13.1\build\native\dirent.targets" Condition="Exists('..\packages\dirent.1.13.1\build\native\dirent.targets')" />
+    <Import Project="..\packages\OpenCV.redist.2.4.6\build\native\OpenCV.redist.targets" Condition="Exists('..\packages\OpenCV.redist.2.4.6\build\native\OpenCV.redist.targets')" />
+    <Import Project="..\packages\OpenCV.2.4.6\build\native\OpenCV.targets" Condition="Exists('..\packages\OpenCV.2.4.6\build\native\OpenCV.targets')" />
+    <Import Project="..\packages\LodePNG.1.1.0\build\native\lodepng.targets" Condition="Exists('..\packages\LodePNG.1.1.0\build\native\lodepng.targets')" />
   </ImportGroup>
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
     <PropertyGroup>
       <ErrorText>이 프로젝트는 이 컴퓨터에 없는 NuGet 패키지를 참조합니다. 해당 패키지를 다운로드하려면 NuGet 패키지 복원을 사용하십시오. 자세한 내용은 http://go.microsoft.com/fwlink/?LinkID=322105를 참조하십시오. 누락된 파일은 {0}입니다.</ErrorText>
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\dirent.1.13.1\build\native\dirent.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\dirent.1.13.1\build\native\dirent.targets'))" />
+    <Error Condition="!Exists('..\packages\OpenCV.redist.2.4.6\build\native\OpenCV.redist.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\OpenCV.redist.2.4.6\build\native\OpenCV.redist.targets'))" />
+    <Error Condition="!Exists('..\packages\OpenCV.2.4.6\build\native\OpenCV.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\OpenCV.2.4.6\build\native\OpenCV.targets'))" />
+    <Error Condition="!Exists('..\packages\LodePNG.1.1.0\build\native\lodepng.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\LodePNG.1.1.0\build\native\lodepng.targets'))" />
   </Target>
 </Project>

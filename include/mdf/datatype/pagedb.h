@@ -326,12 +326,15 @@ public:
 	typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type generateDB(record_result_t record_function, const char* filename);
 
 	template <typename PayloadTy = key_payload_t>
-	typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type UpdateDB(record_result_t record_function, const char* filename);
-
-	generator_error_t Commit();
+	typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type updateDB(record_result_t record_function);
+	
+	
 	// Enabled if vertex_payload_t is non-void type.
-	//template <typename PayloadTy = key_payload_t>
-	//typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type UpdateDB(record_result_t record_function, const char* filename);
+	template <typename PayloadTy = key_payload_t>
+	typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type updateDB(record_result_t record_function);
+	
+	generator_error_t commit();
+
 	/*
 	// Enabled if vertex_payload_t is void type.
 	template <typename PayloadTy = vertex_payload_t>
@@ -362,6 +365,8 @@ protected:
 
 
 	rid_table_t& rid_table;
+	std::ofstream page_os;
+	std::ofstream rid_table_os;
 	___size_t  sid_counter;
 	___size_t  num_pages;
 	std::vector<adj_list_elem_t> list_buffer;
@@ -404,8 +409,9 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 
 	sprintf_s(pages_filename, "%s.pages",filename);
 	sprintf_s(rid_table_filename, "%s.rid_table", filename);
-	std::ofstream page_os{ pages_filename , std::ios::out | std::ios::binary };
-	std::ofstream rid_table_os{ rid_table_filename, std::ios::out | std::ios::binary };
+	
+	page_os.open(pages_filename, std::ios::out | std::ios::binary);
+	rid_table_os.open(rid_table_filename, std::ios::out | std::ios::binary);
 	//record_t* record;
 	//serial_id_t max_vid;
 
@@ -419,7 +425,7 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 	//max_vid = result.second;
 	if ((builder_t::SlotSize + sizeof(result.first) + result.first->size) > builder_t::DataSectionSize) {
 		//large rid
-		issue_sp(rid_table, 0);
+		issue_sp(rid_table, 1);
 	}
 	else {
 		issue_sp(rid_table, 0);
@@ -455,7 +461,7 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 
 	//while (max_vid >= vid)
 	//	iteration_per_vertex(os, vertex_t{ vid++ }, nullptr, 0);
-
+	/*
 	puts("@ flush page os \n");
 	flush(page_os);
 	page_os.close();
@@ -470,12 +476,12 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 	//print2_rid_table(rid_table);
 	write_rid_table(rid_table, rid_table_os);
 	rid_table_os.close();
-	puts("@ close os \n");
+	puts("@ close os \n");*/
 	puts("@ end GenerateDB ----------------------------------\n");
 	return generator_error_t::success;
 }
 
-//non - void key payload
+//non - void key payload ff
 PAGEDB_GENERATOR_TEMPALTE
 template <typename PayloadTy>
 typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::generateDB(record_result_t record_function, const char* filename)
@@ -489,8 +495,8 @@ typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::typ
 
 	sprintf_s(pages_filename, "%s.pages", filename);
 	sprintf_s(rid_table_filename, "%s.rid_table", filename);
-	std::ofstream page_os{ pages_filename , std::ios::out | std::ios::binary };
-	std::ofstream rid_table_os{ rid_table_filename, std::ios::out | std::ios::binary };
+	page_os.open(pages_filename, std::ios::out | std::ios::binary);
+	rid_table_os.open(rid_table_filename, std::ios::out | std::ios::binary);
 	//record_t* record;
 	//serial_id_t max_vid;
 
@@ -538,76 +544,86 @@ typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::typ
 
 	} while (true);
 
-	//while (max_vid >= vid)
-	//	iteration_per_vertex(os, vertex_t{ vid++ }, nullptr, 0);
+	
+	
+	puts("@ end GenerateDB ----------------------------------\n");
+	return generator_error_t::success;
+}
 
+PAGEDB_GENERATOR_TEMPALTE
+generator_error_t PAGEDB_GENERATOR::commit() {
 	puts("@ flush page os \n");
 	flush(page_os);
 	page_os.close();
 	puts("@ close os \n");
-
 	puts("@ write rid table \n");
 	printf("rid_table size ---- %d\n", rid_table.size());
 	for (int i = 0; i< rid_table.size(); i++)
 		printf("rid_table %d %d \n", rid_table[i].start_sid, rid_table[i].auxiliary);
 
-
-	//print2_rid_table(rid_table);
 	write_rid_table(rid_table, rid_table_os);
 	rid_table_os.close();
-	puts("@ close os \n");
-	puts("@ end GenerateDB ----------------------------------\n");
 	return generator_error_t::success;
 }
 //페이지 디비 생성 void.
 PAGEDB_GENERATOR_TEMPALTE
 template <typename PayloadTy>
-typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::UpdateDB(record_result_t record_function, const char* filename)
+typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::updateDB(record_result_t record_function)
 {
 	/* 수정완료.*/
 
 	puts("@ start GenerateDB ----------------------------------\n");
 	serial_id_t sid = 0;
-	char pages_filename[256];
-	char rid_table_filename[256];
-
-	sprintf_s(pages_filename, "%s.pages", filename);
-	sprintf_s(rid_table_filename, "%s.rid_table", filename);
-	std::ofstream page_os{ pages_filename , std::ios::out | std::ios::binary };
-	std::ofstream rid_table_os{ rid_table_filename, std::ios::out | std::ios::binary };
-	//record_t* record;
-	//serial_id_t max_vid;
-
-	// Init phase
-	this->init();
+	
 	record_pair_t result = record_function(); //  함수에서 레코드 페어 받아옴 
 											  //result 1 = record , 2 = vertex
-	if (result.first == NULL)
+	if (result.first == NULL) {
+		puts("Update Error:Empty Data... \n");
 		return generator_error_t::empty_data; // initialize failed;
-											  //sid = result.first[0].src;
-											  //max_vid = result.second;
-	if ((builder_t::SlotSize + sizeof(result.first) + result.first->size) > builder_t::DataSectionSize) {
-		//large rid
-		issue_sp(rid_table, 0);
 	}
-	else {
-		issue_sp(rid_table, 0);
-	}
-	//int count = 0; // test 
-	//char test2[256]; //test
-	// Iteration
+										  
+	
 	do
 	{
-		/* it is create pic test.
+	
+		insert_vertex(page_os, result.second, result.first);
+		//iteration_per_vertex(os, vertex_t{ vid }, result.first.data(), result.first.size());
+		// 위 함수로 들어가서 스몰 페이지 만드는걸로 들어가서 애드 small 페이지 해준다.
+		///슬롯 만들어서 넣어주고.
+		sid += 1; // sid 증가해주고 
 
-		record_t* test = result.first;
-		sprintf_s(test2, "test%d.jpeg", count++); // test
-		printf("%s\n", test2);
-		std::ofstream ofs(test2, ios::trunc | ios::binary);// test
-		ofs.write(reinterpret_cast<const char*>(test->data), test->size);// test
-		ofs.close();
-		*/
+		result = record_function(); // 다시 넣어주고 
+		if (result.first == NULL) // 레코드가 없으면 끝내준다.
+			break; // parsing error?
 
+
+	} while (true);
+
+	
+	puts("@ end UpdateDB ----------------------------------\n");
+	return generator_error_t::success;
+}
+
+//non-void key payload
+PAGEDB_GENERATOR_TEMPALTE
+template <typename PayloadTy>
+typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::type PAGEDB_GENERATOR::updateDB(record_result_t record_function)
+{
+	/* 수정완료.*/
+
+	puts("@ start GenerateDB ----------------------------------\n");
+	serial_id_t sid = 0;
+
+	record_pair_t result = record_function(); //  함수에서 레코드 페어 받아옴 
+											  //result 1 = record , 2 = vertex
+	if (result.first == NULL) {
+		puts("Update Error:Empty Data... \n");
+		return generator_error_t::empty_data; // initialize failed;
+	}
+
+
+	do
+	{
 
 		insert_vertex(page_os, result.second, result.first);
 		//iteration_per_vertex(os, vertex_t{ vid }, result.first.data(), result.first.size());
@@ -622,25 +638,8 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 
 	} while (true);
 
-	//while (max_vid >= vid)
-	//	iteration_per_vertex(os, vertex_t{ vid++ }, nullptr, 0);
 
-	puts("@ flush page os \n");
-	flush(page_os);
-	page_os.close();
-	puts("@ close os \n");
-
-	puts("@ write rid table \n");
-	printf("rid_table size ---- %d\n", rid_table.size());
-	for (int i = 0; i< rid_table.size(); i++)
-		printf("rid_table %d %d \n", rid_table[i].start_sid, rid_table[i].auxiliary);
-
-
-	//print2_rid_table(rid_table);
-	write_rid_table(rid_table, rid_table_os);
-	rid_table_os.close();
-	puts("@ close os \n");
-	puts("@ end GenerateDB ----------------------------------\n");
+	puts("@ end UpdateDB ----------------------------------\n");
 	return generator_error_t::success;
 }
 /*

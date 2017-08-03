@@ -13,7 +13,7 @@ namespace utility {
 }
 
 namespace imageProcessing {
-	
+	int generateDB_Many_dir();
 	int generate_page_db(const char* filepath, const char* pageDB_name);
 	void print_page(const char* DB_name, const char* destPath);
 	void page_to_lmdb(const char* filename, const char* path);

@@ -102,9 +102,50 @@ namespace imageProcessing {
 		// Generate pageDB 
 		generator_traits::pagedb_generator_t pagedb_generator{ mdf::generate_rid_table<generator_traits::rid_tuple_t, std::vector>() };
 		pagedb_generator.generateDB(std::bind(image_to_pair, std::ref(filepath), std::ref(dir),std::ref(sid)), pageDB_name);
-
+		pagedb_generator.commit();
 		return 0; // SUCCESS
 
+	}
+	int generateDB_Many_dir() {
+		//example of many_dir...
+		puts("start test many dir \n");
+		string source1 = "./source1"; // need to jpeg files in dir
+		string source2 = "./source2"; // need to jpeg files in dir
+		string pageDB_name = "testDB"; // pageDB name
+		const char* dd = source1.c_str();
+		const char* dd2 = source2.c_str();
+		/* begin */
+		puts("@ Image DataSet - PageDB Geneartion\n");
+		/* init */
+		struct DIR* dir;
+		//string full_path;
+		dir = opendir(source1.c_str());
+		if (dir == NULL) {
+			puts("It is not a directory.\n");
+			return EXIT_FAILURE;
+		}
+		else {
+			readdir(dir); // . dir
+			readdir(dir); // .. dir
+		}
+		struct DIR* dir2;
+		dir2 = opendir(dd2);
+		if (dir == NULL) {
+			puts("It is not a directory.\n");
+			return EXIT_FAILURE;
+		}
+		else {
+			readdir(dir2); // . dir
+			readdir(dir2); // .. dir
+		}
+		page_traits::serial_id_t sid = 0;
+		// Generate pageDB 
+		generator_traits::pagedb_generator_t pagedb_generator{ mdf::generate_rid_table<generator_traits::rid_tuple_t, std::vector>() };
+		pagedb_generator.generateDB(std::bind(image_to_pair, std::ref(dd), std::ref(dir), std::ref(sid)), pageDB_name.c_str());
+		pagedb_generator.updateDB(std::bind(image_to_pair, std::ref(dd2), std::ref(dir2), std::ref(sid)));
+		pagedb_generator.commit();
+		puts("end function\n");
+		return 0; // SUCCESS
 	}
 
 	//print pageDB. 
