@@ -11,7 +11,9 @@
 #include <string>
 #include <sstream>
 #include <direct.h>
+//#include "datatype\pagedb.h"
 #include <functional>
+
 
 
 #define DISABLE_COPY_AND_ASSIGN(classname) \
@@ -27,21 +29,12 @@ private:\
 using namespace std;
 
 namespace mdf {
-	inline std::string format_size_t(size_t n, int numberOfLeadingZeros = 0) {
-		std::ostringstream s;
-		s << std::setw(numberOfLeadingZeros) << std::setfill('0') << n;
-		return s.str();
-	}
-	inline size_t format_str(string str) {
-		std::istringstream s(str);
-		size_t num;
-		s >> num;
-		return num;
-	}
+	
 	namespace lmdb {
 		constexpr size_t SIZE_1KB = 1024u;
 		constexpr size_t SIZE_1MB = SIZE_1KB * 1024u;
 		constexpr size_t SIZE_1GB = SIZE_1MB * 1024u;
+		
 		using data_pair = std::pair<size_t /* size */, char* /* data */>; //반환값 
 		using data_pair_func = std::function<data_pair()>; // 함수
 		enum Mode { READ, WRITE, NEW };
@@ -103,46 +96,59 @@ namespace mdf {
 			explicit Transaction(MDB_env* mdb_env)
 				: mdb_env_(mdb_env) { }
 			void Put(const string& key, const string& value);
+			void ChangeAddMapSize(size_t size);
+			void AddMapSize();
 			void Commit();
 
 		private:
+			bool flag = true;
 			int rc;
 			MDB_env* mdb_env_;
 			vector<string> keys, values;
-
-			void DoubleMapSize();
+			size_t addMapSize = SIZE_1MB * 64; /* Default add size 64MB */
+			size_t total_size = 0;
+			void setMapSize();
 
 			DISABLE_COPY_AND_ASSIGN(Transaction);
 
 
 
 		};
+		void Transaction::ChangeAddMapSize(size_t size) {
+			addMapSize = size;
+		}
 		void Transaction::Put(const string& key, const string& value) {
 			keys.push_back(key);
 			values.push_back(value);
+			total_size += sizeof(MDB_val) * 2 + key.size() + value.size();
 		}
 		void Transaction::Commit() {
+			
 			MDB_dbi mdb_dbi;
 			MDB_val mdb_key, mdb_data;
 			MDB_txn *mdb_txn;
-
+			///if (flag) {
+			///	setMapSize();
+			///	flag = false;
+			///}
 			// Initialize MDB variables
 			E(mdb_txn_begin(mdb_env_, NULL, 0, &mdb_txn));
 			E(mdb_dbi_open(mdb_txn, NULL, 0, &mdb_dbi));
-
+		
+			
 			for (int i = 0; i < keys.size(); i++) {
 				mdb_key.mv_size = keys[i].size();
 				mdb_key.mv_data = const_cast<char*>(keys[i].data());
 				mdb_data.mv_size = values[i].size();
 				mdb_data.mv_data = const_cast<char*>(values[i].data());
-
+				
 				// Add data to the transaction
 				int put_rc = mdb_put(mdb_txn, mdb_dbi, &mdb_key, &mdb_data, 0);
 				if (put_rc == MDB_MAP_FULL) {
 					// Out of memory - double the map size and retry
 					mdb_txn_abort(mdb_txn);
 					mdb_dbi_close(mdb_env_, mdb_dbi);
-					DoubleMapSize();
+					AddMapSize();
 					Commit();
 					return;
 				}
@@ -155,7 +161,7 @@ namespace mdf {
 			if (commit_rc == MDB_MAP_FULL) {
 				// Out of memory - double the map size and retry
 				mdb_dbi_close(mdb_env_, mdb_dbi);
-				DoubleMapSize();
+				AddMapSize();
 				Commit();
 				return;
 			}
@@ -166,14 +172,34 @@ namespace mdf {
 			mdb_dbi_close(mdb_env_, mdb_dbi);
 			keys.clear();
 			values.clear();
+			puts("LMDB Commit Complete.. \n");
 		}
-		void Transaction::DoubleMapSize() {
+		void Transaction::setMapSize() {
 			struct MDB_envinfo current_info;
+			
+			//size_t new_size = current_info.me_mapsize + total_size;
+
+			//DLOG(INFO) << "Doubling LMDB map size to " << (new_size >> 20) << "MB ...";
+			E(mdb_env_set_mapsize(mdb_env_, total_size));
+			printf("mapsize = %d\n", total_size/SIZE_1MB);
+			//puts("mapsize increase!~~\n");
+		}
+		
+		void Transaction::AddMapSize() {
+			struct MDB_envinfo current_info;
+			
 			E(mdb_env_info(mdb_env_, &current_info));
-			size_t new_size = current_info.me_mapsize * 2;
+			
+			size_t new_size = current_info.me_mapsize + addMapSize;
+			
+
+
 			//DLOG(INFO) << "Doubling LMDB map size to " << (new_size >> 20) << "MB ...";
 			E(mdb_env_set_mapsize(mdb_env_, new_size));
+			printf("mapsize = %d\n", new_size/SIZE_1MB );
+			//puts("mapsize increase!~~\n");
 		}
+		
 
 		class LMDB {
 		public:
@@ -189,16 +215,30 @@ namespace mdf {
 			}
 			Cursor* NewCursor();
 			Transaction* NewTransaction();
+			void get_stat();
 
 		private:
 			int rc;
 			MDB_env* mdb_env_;
 			MDB_dbi mdb_dbi_;
-
+			
 
 			DISABLE_COPY_AND_ASSIGN(LMDB);
 		};
-
+		void LMDB::get_stat() {
+			MDB_stat stat;
+			mdb_env_stat(mdb_env_, &stat);
+			
+			auto dbSize = stat.ms_psize * (stat.ms_leaf_pages + stat.ms_branch_pages + stat.ms_overflow_pages);
+			printf("ms_psize = %d\n", stat.ms_psize);
+			printf("ms_leaf_pages = %d\n", stat.ms_leaf_pages);
+			printf("ms_branch_pages = %d\n", stat.ms_branch_pages);
+			printf("ms_overflow_pages = %d\n", stat.ms_overflow_pages);
+			printf("overflow_pages size = %d\n", (stat.ms_overflow_pages*stat.ms_psize) / SIZE_1MB);
+			printf("dbsize = %d\n", dbSize/SIZE_1MB);
+			printf("depth =%d\n", stat.ms_depth);
+			printf("total entries %d\n", stat.ms_entries);
+		}
 		void LMDB::Open(const char* source, Mode mode) {
 			E(mdb_env_create(&mdb_env_));
 			if (mode == NEW) {
@@ -208,6 +248,10 @@ namespace mdf {
 			int flags = 0;
 			if (mode == READ) {
 				flags = MDB_RDONLY | MDB_NOTLS;
+			}
+
+			if (mode == WRITE) {
+				flags = MDB_WRITEMAP | MDB_NOTLS;
 			}
 			int rc_stat = mdb_env_open(mdb_env_, source, flags, 0664);
 #ifndef ALLOW_LMDB_NOLOCK
