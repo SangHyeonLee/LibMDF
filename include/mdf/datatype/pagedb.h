@@ -17,8 +17,60 @@
 #include <vector>
 #include <fstream>
 #include <iterator>
+#include <sstream>
+#include <iomanip>
+
 
 namespace mdf {
+	inline std::string format_size_t(size_t n, int numberOfLeadingZeros = 0) {
+		std::ostringstream s;
+		s << std::setw(numberOfLeadingZeros) << std::setfill('0') << n;
+		return s.str();
+	}
+	inline vector<std::string> split_string(const char* str) {
+		vector<std::string> result;
+		const char* split = "|";
+		char *context = NULL;
+		int i = 0;
+		char *ptr = strtok_s((char *)str, split, &context);
+		while (ptr != NULL) {
+			result.push_back(ptr);
+			i++;
+			ptr = strtok_s(NULL, "|", &context);
+		}
+		return result;
+	}
+	
+
+	inline vector<std::pair<size_t, std::string>> split_string2(const char* str) {
+		vector<std::pair<size_t,std::string>> result;
+		const char* split = "|";
+		char *context = NULL;
+		int i = 0;
+		char *ptr = strtok_s((char *)str, split, &context);
+		while (ptr != NULL) {
+			std::string temp(ptr);
+			printf("ptr ~~ %s \n", ptr);
+			result.push_back(std::make_pair(temp.size(),temp.c_str()));
+			i++;
+			ptr = strtok_s(NULL, "|", &context);
+		}
+		return result;
+	}
+	inline std::string format_key_string(vector<std::string> args) {
+		string result;
+		for (int i = 0; i < args.size(); i++) {
+			result.append(args.at(i));
+			if (i < args.size() - 1) result.append("|");
+		}
+		return result;
+	}
+	inline size_t format_str(string str) {
+		std::istringstream s(str);
+		size_t num;
+		s >> num;
+		return num;
+	}
 
 #pragma pack(push, 1)
 template <typename __serial_id_t, typename __auxiliary_t = std::size_t>
@@ -41,7 +93,7 @@ CONT_T<PAGE_T> read_pages(const char* filepath, const std::size_t bundle_of_page
 {	//페이지 읽는 함수
     using page_t = PAGE_T;
     using cont_t = CONT_T<PAGE_T>;
-	puts("read pages\n");
+	//puts("read pages\n");
     // Open a file stream
     std::ifstream ifs{ filepath, std::ios::in | std::ios::binary };
 
@@ -66,10 +118,10 @@ CONT_T<PAGE_T> read_pages(const char* filepath, const std::size_t bundle_of_page
                 std::copy(buffer.begin(), buffer.begin() + extracted, std::back_inserter(pages));
                 break;
             }
-			puts("one cycle complete \n");
+			
         }
     }
-	puts("end pages\n");
+	puts("read pages\n");
     return pages;
 }
 
@@ -81,14 +133,14 @@ template <typename RID_TUPLE_T,
 { // rid 테이블 읽는 함수
     using rid_tuple_t = RID_TUPLE_T;
     using rid_table_t = CONT_T<RID_TUPLE_T>;
-	puts("@ start read rid table \n");
+	//puts("@ start read rid table \n");
     // Open a file stream
     std::ifstream ifs{ filepath, std::ios::in | std::ios::binary };
 	
     rid_table_t table; // rid table
 
 	
-	puts("@ start read rid table \n");
+	
 	if (!ifs.is_open()) {
 		puts("@ not open \n");
 		//std::ofstream ofs{ "weuv_disk_based.rid_table", std::ios::out | std::ios::binary };
@@ -99,13 +151,13 @@ template <typename RID_TUPLE_T,
     {
         rid_tuple_t tuple;
         while (!ifs.eof()) {
-			puts("@ insert \n");
+			//puts("@ insert \n");
             ifs.read(reinterpret_cast<char*>(&tuple), sizeof(rid_tuple_t));
             if (ifs.gcount() > 0)
                 table.push_back(tuple);
         }
     }
-	puts("@ end read rid table \n");
+	puts("@ read rid table \n");
     return table;
 }
 
@@ -139,7 +191,7 @@ template <typename RID_TUPLE_T,
 	if (sizeof(table) < 1) printf("tlqkf???\n");
 	table.push_back(tuple);
 
-	printf("table size = ", table.size());
+	printf("table size = %d", table.size());
 	//next_ssid = sid_counter;
 	//page->clear();
 	//++num_pages;
@@ -521,7 +573,7 @@ typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::typ
 	do
 	{
 		/* it is create pic test.
-
+		
 		record_t* test = result.first;
 		sprintf_s(test2, "test%d.jpeg", count++); // test
 		printf("%s\n", test2);
@@ -536,7 +588,7 @@ typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::typ
 		// 위 함수로 들어가서 스몰 페이지 만드는걸로 들어가서 애드 small 페이지 해준다.
 		///슬롯 만들어서 넣어주고.
 		sid += 1; // sid 증가해주고 
-
+		//printf("sid = %d\n", sid);
 		result = record_function(); // 다시 넣어주고 
 		if (result.first == NULL) // 레코드가 없으면 끝내준다.
 			break; // parsing error?
@@ -828,6 +880,8 @@ void PAGEDB_GENERATOR::small_page_generate(std::ostream& os, const vertex_t& ver
 	if (!slot_available || (capacity < record->size)) {
 		issue_page(os, slotted_page_flag::SP); // 안되면 페이지 추가
 		issue_sp(rid_table, vertex.serial_id);
+		printf("issue new page \n");
+		
 	}
 		
 	//puts("small page gen3 \n");
@@ -940,6 +994,7 @@ void PAGEDB_GENERATOR::issue_page(std::ostream& os, page_flag_t flags)
 	builder_t* raw_ptr = page.get();
 	os.write(reinterpret_cast<char*>(raw_ptr), PageSize);
 	page->clear();
+	//printf("new page[%d]\n", num_pages);
 	++num_pages;
 }
 /*

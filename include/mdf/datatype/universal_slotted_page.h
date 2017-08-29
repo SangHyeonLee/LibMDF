@@ -243,7 +243,8 @@ struct footer {
 #define __MDF_SLOTTED_PAGE_TEMPLATE_CONSTDEFS \
     static constexpr ___size_t PageSize = __page_size;\
     static constexpr ___size_t DataSectionSize = PageSize - sizeof(footer_t);\
-    static constexpr ___size_t SlotSize = sizeof(slot_t)
+    static constexpr ___size_t SlotSize = sizeof(slot_t);\
+	static constexpr ___size_t RecordSize_t_Size = sizeof(record_size_t)
 
 //    static constexpr ___size_t EdgePayloadSize = PAGE_T::EdgePayloadSize;\
 //    static constexpr ___size_t MaximumEdgesInHeadPage = PAGE_T::MaximumEdgesInHeadPage;\
@@ -253,7 +254,8 @@ struct footer {
 #define ALIAS_SLOTTED_PAGE_TEMPLATE_CONSTDEFS(PAGE_T) \
     static constexpr ___size_t PageSize = PAGE_T::PageSize;\
     static constexpr ___size_t DataSectionSize = PAGE_T::DataSectionSize;\
-    static constexpr ___size_t SlotSize = PAGE_T::SlotSize
+    static constexpr ___size_t SlotSize = PAGE_T::SlotSize;\
+	static constexpr ___size_t RecordSize_t_Size = PAGE_T::RecordSize_t_Size
 
 
 //기본 세팅 - 슬롯 1 - 레코드 1 ( 그래서 레코드 사이즈 필요없다. 처리 두가지 필요)
@@ -323,6 +325,19 @@ public:
 	{
 		return reinterpret_cast<adj_list_elem_t*>(&data_section[slot.record_offset]);
 	}
+	inline data_payload_t* record_data(const slot_t& slot)
+	{
+		return reinterpret_cast<data_payload_t*>(&data_section[slot.record_offset + RecordSize_t_Size]);
+	}
+	inline data_payload_t* record_offset_data(const size_t offset)
+	{
+		return reinterpret_cast<data_payload_t*>(&data_section[offset]);
+	}
+	
+	
+
+
+	
 	//레코드 갯수
     inline record_size_t& record_size(const slot_t& slot) 
     {
@@ -494,6 +509,7 @@ public:
 		return this->number_of_slots() - 1;
 	}*/
 	// Enabled if key_payload_t is non-void type.
+	
 	template <typename PayloadTy = key_payload_t>
 	offset_t add_slot(serial_id_t serial_id, typename std::enable_if<!std::is_void<PayloadTy>::value, key_payload_t>::type payload)
 	{
@@ -502,6 +518,19 @@ public:
 		slot.serial_id = serial_id;
 		slot.record_offset = static_cast<record_offset_t>(this->footer.front);
 		slot.key_payload = payload;
+		
+		//this->footer.front += sizeof(record_size_t);
+		return this->number_of_slots() - 1;
+	}
+	template <typename PayloadTy = key_payload_t>
+	offset_t add_array_slot(serial_id_t serial_id, char *payload)
+	{
+		///this->footer.rear -= sizeof(slot_t);
+		///slot_t& slot = reinterpret_cast<slot_t&>(this->data_section[this->footer.rear]);
+	///	slot.serial_id = serial_id;
+		///slot.record_offset = static_cast<record_offset_t>(this->footer.front);
+	///	slot.key_payload = payload;
+
 		//this->footer.front += sizeof(record_size_t);
 		return this->number_of_slots() - 1;
 	}
@@ -836,7 +865,7 @@ struct record_template<void, typename __data_size_t, typename __data_payload_t>
 
 };
 
-template <typename __serial_id_t, typename __payload_t = void>
+template <typename __serial_id_t, typename __payload_t >
 struct vertex_template
 {
     using serial_id_t = __serial_id_t;
@@ -847,7 +876,15 @@ struct vertex_template
 	template <typename __builder_t>
 	void to_slot(__builder_t& target_page) const
 	{
+		//offset_t add_slot(serial_id_t serial_id, typename std::enable_if<!std::is_void<PayloadTy>::value, key_payload_t>::type payload)
+		///if (std::is_array<__payload_t>::value) {
+		///	size_t size = sizeof(payload);
+		///	char *test = reinterpret_cast<char *>(payload)
+		///	reinterpret_cast<char *>()
+		///	target_page.add_array_slot(serial_id, payload);
+		///} else 
 		target_page.add_slot(serial_id, payload);
+		
 	}
 	template <typename __builder_t>
 	void to_slot_ext(__builder_t& target_page) const
