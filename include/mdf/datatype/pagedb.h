@@ -183,15 +183,68 @@ template <typename RID_TUPLE_T,
 { // rid 테이블 읽는 함수
 	using rid_tuple_t = RID_TUPLE_T;
 	using rid_table_t = CONT_T<RID_TUPLE_T>;
-	puts("@ Generate RID Table \n");
+	//puts("@ Generate RID Table \n");
 	rid_tuple_t tuple;
 	tuple.start_sid = sid;
 	tuple.auxiliary = 0; // small page: 0
-	printf("generate %d %d \n", tuple.start_sid, tuple.auxiliary);
-	if (sizeof(table) < 1) printf("tlqkf???\n");
+	//printf("generate %d %d \n", tuple.start_sid, tuple.auxiliary);
+	//if (sizeof(table) < 1) printf("what?");
+	table.push_back(tuple);
+	
+	
+	
+	//printf("table size = %d \n", table.size());
+	//next_ssid = sid_counter;
+	//page->clear();
+	//++num_pages;
+	//rid_table_t table; // rid table
+	//return table;
+}
+template <typename RID_TUPLE_T,
+	template <typename ELEM_T,
+	typename = std::allocator<ELEM_T> >
+	class CONT_T = std::vector >
+	void issue_lp_head(CONT_T<RID_TUPLE_T>& table, size_t sid, size_t num_related)
+{ // rid 테이블 읽는 함수
+	using rid_tuple_t = RID_TUPLE_T;
+	using rid_table_t = CONT_T<RID_TUPLE_T>;
+	//puts("@ Generate RID Table \n");
+	rid_tuple_t tuple;
+	tuple.start_sid = sid;
+	tuple.auxiliary = num_related; // small page: 0
+						 //printf("generate %d %d \n", tuple.start_sid, tuple.auxiliary);
+						 //if (sizeof(table) < 1) printf("what?");
 	table.push_back(tuple);
 
-	printf("table size = %d", table.size());
+	//printf("table size = %d \n", table.size());
+	//next_ssid = sid_counter;
+	//page->clear();
+	//++num_pages;
+	//rid_table_t table; // rid table
+	//return table;
+}
+
+template <typename RID_TUPLE_T,
+	template <typename ELEM_T,
+	typename = std::allocator<ELEM_T> >
+	class CONT_T = std::vector >
+	void issue_lp_ext(CONT_T<RID_TUPLE_T>& table, size_t sid, size_t num_ext_pages)
+{ // rid 테이블 읽는 함수
+	using rid_tuple_t = RID_TUPLE_T;
+	using rid_table_t = CONT_T<RID_TUPLE_T>;
+	//puts("@ Generate RID Table \n");
+	rid_tuple_t tuple;
+	tuple.start_sid = sid;
+	for (size_t i = 1; i <= num_ext_pages; i++) {
+		tuple.auxiliary = i;
+		table.push_back(tuple);
+	}
+	//tuple.auxiliary = num_related; // small page: 0
+								   //printf("generate %d %d \n", tuple.start_sid, tuple.auxiliary);
+								   //if (sizeof(table) < 1) printf("what?");
+	//table.push_back(tuple);
+
+	//printf("table size = %d \n", table.size());
 	//next_ssid = sid_counter;
 	//page->clear();
 	//++num_pages;
@@ -207,7 +260,7 @@ void write_rid_table(CONT_T<RID_TUPLE_T>& table, std::ostream& os)
 { // rid 테이블 읽는 함수
 using rid_tuple_t = RID_TUPLE_T;
 using rid_table_t = CONT_T<RID_TUPLE_T>;
-puts("@ write rid_table \n");
+puts("@ write rid_table");
 
 for (int i = 0; i< table.size(); i++) {
 	os.write(reinterpret_cast<char*>(&table[i].start_sid), sizeof(table[i].start_sid));
@@ -454,7 +507,7 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 {
 	/* 수정완료.*/
 	
-	puts("@ start GenerateDB ----------------------------------\n");
+	puts("@ start GenerateDB ----------------------------------");
 	serial_id_t sid = 0;
 	char pages_filename[256];
 	char rid_table_filename[256];
@@ -472,12 +525,12 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 	record_pair_t result = record_function(); //  함수에서 레코드 페어 받아옴 
 	//result 1 = record , 2 = vertex
 	if (result.first == NULL)
-		return generator_error_t::empty_data; // initialize failed;
+		return generator_error_t::empty_data; // initialize failed or EOF;
 	//sid = result.first[0].src;
 	//max_vid = result.second;
 	if ((builder_t::SlotSize + sizeof(result.first) + result.first->size) > builder_t::DataSectionSize) {
 		//large rid
-		issue_sp(rid_table, 1);
+		//issue_sp(rid_table, 0);
 	}
 	else {
 		issue_sp(rid_table, 0);
@@ -529,7 +582,7 @@ typename std::enable_if<std::is_void<PayloadTy>::value, generator_error_t>::type
 	write_rid_table(rid_table, rid_table_os);
 	rid_table_os.close();
 	puts("@ close os \n");*/
-	puts("@ end GenerateDB ----------------------------------\n");
+	puts("@ end GenerateDB ----------------------------------");
 	return generator_error_t::success;
 }
 
@@ -604,14 +657,14 @@ typename std::enable_if<!std::is_void<PayloadTy>::value, generator_error_t>::typ
 
 PAGEDB_GENERATOR_TEMPALTE
 generator_error_t PAGEDB_GENERATOR::commit() {
-	puts("@ flush page os \n");
+	puts("@ flush page os");
 	flush(page_os);
 	page_os.close();
-	puts("@ close os \n");
-	puts("@ write rid table \n");
-	printf("rid_table size ---- %d\n", rid_table.size());
+	puts("@ close os");
+	puts("@ write rid table");
+	printf("rid_table size - %d\n", rid_table.size());
 	for (int i = 0; i< rid_table.size(); i++)
-		printf("rid_table %d %d \n", rid_table[i].start_sid, rid_table[i].auxiliary);
+		printf("rid_table line[%d] %d %d \n",i, rid_table[i].start_sid, rid_table[i].auxiliary);
 
 	write_rid_table(rid_table, rid_table_os);
 	rid_table_os.close();
@@ -905,6 +958,19 @@ void PAGEDB_GENERATOR::large_page_generate(std::ostream& os, const vertex_t& ver
 	puts("why lp???? \n");
 	//완전큰 동영상으로 체크 해봐야됨. 일단 RID Table 부터 해결할것.
 	/* 수정 필요함.*/
+	record_t* temp_record;
+	size_t total_size = record->size;
+	printf("total_size = %d \n", total_size);
+	const size_t full_record_size = DataSectionSize - sizeof(vertex_t) - sizeof(record_t);
+	printf("full_record_size = %d \n", full_record_size);
+	size_t current_offset = 0;
+	size_t remaining_data_size = record->size;
+	puts("setting okay...");
+	//std::string data(record->data, record->size);
+	//free(record);
+	//std::istream ifs(data.data(),ios::binary);
+	size_t num_page = (total_size / full_record_size) + 1; // 나머지 + 1
+	printf("num_page = %d\n", num_page);
 	if (!page->is_empty())  // 페이지가 안비었으면 새 페이지를 할당한다.
 		issue_page(os, slotted_page_flag::SP);
 
@@ -912,17 +978,106 @@ void PAGEDB_GENERATOR::large_page_generate(std::ostream& os, const vertex_t& ver
 
 	// Processing a head page
 	{
-		constexpr ___size_t data_size = 0; // 레코드 토탈 사이즈  
-		vertex.to_slot(*page);// 페이지에 붙이기
+		puts("processing a head page");
+		///constexpr ___size_t data_size = record->size; // 레코드 토탈 사이즈
+		vertex.to_slot(*page);// 페이지에 붙이기 vertex;
+		temp_record = (record_t *)malloc(sizeof(record_t) + full_record_size); // 메모리 할당
+		temp_record->size = full_record_size; // 임시 레코드에 사이즈 할당 
+		printf("temp record size = %d \n", full_record_size);
+		//ifs.read(temp_record->data, full_record_size); // ifs 읽기
+		std::string temp(record->data, full_record_size);
+		puts("temp gen");
+		memmove(temp_record->data, temp.c_str(), full_record_size);
+		puts("memmove ~");
+		current_offset += full_record_size; // 오프셋 재정의.
+		puts("offset change");
+		//delete &temp; // 없애준다.
+		//puts("del temp");
+		update_buffer(temp_record); // 버퍼 업데이트
+		puts("update buffer");
+		page->add_list_lp_head(full_record_size,*buffer); // 페이지에 붙여넣기
+		puts("page->add_list_lp_head");
+		remaining_data_size -= full_record_size; // 남은 데이터 변경
+		printf("remaining_data_size = %d \n", remaining_data_size);
+		issue_page(os, slotted_page_flag::LP_HEAD); // 페이지 이슈
+		puts("issue_page");
+		issue_lp_head(rid_table, vertex.serial_id, num_page - 1); // rid table 업데이트.
+		puts("issue_lp_head");
+
+		delete temp_record; // 메모리 프리.
+		puts("temp_record del");
+	//	void add_list_lp_head(___size_t record_size, adj_list_elem_t* elem_arr);
+		/// Add list for extended part of Large pages (LP-ext)
+	//	void add_list_lp_ext(adj_list_elem_t& elem_arr);
+
 		//update_buffer(edges, num_edges_in_page); // 레코드 업데이트
 	//	page->add_list_lp_head(num_edges, list_buffer.data(), num_edges_in_page); // 페이지에 넣어준다.
 		//issue_page(os, slotted_page_flag::LP_HEAD); // 페이지 새로만듬.
 	}
 
 	// Processing a extended pages
-	___size_t remained_edges = 0;//남은 레코드 데이터 사이즈
+	///___size_t remained_edges = 0;//남은 레코드 데이터 사이즈
 	//___size_t offset = MaximumEdgesInHeadPage;
 	{
+		puts("Processing a extended pages");
+		for (size_t i = 1; i <= num_page - 1; i++) {
+			printf("i = %d  and num_page = %d \n", i,num_page);
+			if (i == num_page - 1) {
+				puts("last page ~~");
+				vertex.to_slot(*page);// 페이지에 붙이기 vertex;
+				temp_record = (record_t *)malloc(sizeof(record_t) + remaining_data_size); // 메모리 할당
+				temp_record->size = remaining_data_size; // 임시 레코드에 사이즈 할당 
+				//ifs.read(temp_record->data, remaining_data_size); // ifs 읽기
+				std::string temp(record->data+current_offset, remaining_data_size);
+				memmove(temp_record->data, temp.c_str(), remaining_data_size);
+				printf("current_offset = %d \n", current_offset);
+				current_offset += remaining_data_size; // 오프셋 재정의.
+				printf("current_offset = %d \n", current_offset);
+				printf("remaining_data_size = %d \n", remaining_data_size);
+
+				if (current_offset == total_size) puts("Okay... perfect!");
+				//delete &temp; // 없애준다.
+				update_buffer(temp_record); // 버퍼 업데이트
+				puts("okay..");
+				page->add_list_lp_ext(*buffer); // 페이지에 붙여넣기
+				puts("yes..");
+				//remaining_data_size -= full_record_size; // 남은 데이터 변경
+				issue_page(os, slotted_page_flag::LP_EXTENDED); // 페이지 이슈
+				puts("dd??");
+				issue_lp_ext(rid_table, vertex.serial_id, num_page - 1); // rid table 업데이트.
+				puts("hmm");
+				delete temp_record; // 메모리 프리.
+				puts("Okay end iter...");
+				break;
+			}
+			puts("ext page gen start..");
+			vertex.to_slot(*page);// 페이지에 붙이기 vertex;
+			puts("vertex.to_slot");
+			temp_record = (record_t *)malloc(sizeof(record_t) + full_record_size); // 메모리 할당
+			puts("mallc temp_record");
+			temp_record->size = full_record_size; // 임시 레코드에 사이즈 할당 
+			
+												  
+			//ifs.read(temp_record->data, full_record_size); // ifs 읽기
+
+			std::string temp(record->data+current_offset, full_record_size);
+			puts("temp gen");
+			
+			memmove(temp_record->data, temp.c_str(), full_record_size);
+			puts("memmove");
+			current_offset += full_record_size; // 오프셋 재정의.
+			printf("current_offset = %d \n", current_offset);
+			//delete &temp; // 없애준다.
+
+			update_buffer(temp_record); // 버퍼 업데이트
+			page->add_list_lp_ext(*buffer); // 페이지에 붙여넣기
+			remaining_data_size -= full_record_size; // 남은 데이터 변경
+			printf("remaing_data_size = %d \n", remaining_data_size);
+			issue_page(os, slotted_page_flag::LP_EXTENDED); // 페이지 이슈
+
+			delete temp_record; // 메모리 프리.
+
+		}
 		// 페이지마다 얼마나 들어가는가? ( 최대치를 넣던가 : 남은 용량만큼 넣던가 )
 //		___size_t num_edges_per_page = (remained_edges >= MaximumEdgesInExtPage) ? MaximumEdgesInExtPage : remained_edges; 
 	//	vertex.to_slot_ext(*page); // 페이지에 슬롯 박아넣기
@@ -930,8 +1085,9 @@ void PAGEDB_GENERATOR::large_page_generate(std::ostream& os, const vertex_t& ver
 	//	page->add_list_lp_ext(list_buffer.data(), num_edges_per_page); // 추가
 	//	offset += num_edges_per_page; // 
 	//	remained_edges -= num_edges_per_page;
-	//	issue_page(os, slotted_page_flag::LP_EXTENDED);
+		
 	}
+	puts("Okay end func");
 }
 
 /*
