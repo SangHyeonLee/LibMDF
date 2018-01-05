@@ -244,7 +244,8 @@ struct footer {
     static constexpr ___size_t PageSize = __page_size;\
     static constexpr ___size_t DataSectionSize = PageSize - sizeof(footer_t);\
     static constexpr ___size_t SlotSize = sizeof(slot_t);\
-	static constexpr ___size_t RecordSize_t_Size = sizeof(record_size_t)
+	static constexpr ___size_t RecordSize = sizeof(record_size_t);\
+	static constexpr ___size_t LargePageRecordSize = DataSectionSize - sizeof(slot_t) - sizeof(record_size_t)
 
 //    static constexpr ___size_t EdgePayloadSize = PAGE_T::EdgePayloadSize;\
 //    static constexpr ___size_t MaximumEdgesInHeadPage = PAGE_T::MaximumEdgesInHeadPage;\
@@ -255,7 +256,8 @@ struct footer {
     static constexpr ___size_t PageSize = PAGE_T::PageSize;\
     static constexpr ___size_t DataSectionSize = PAGE_T::DataSectionSize;\
     static constexpr ___size_t SlotSize = PAGE_T::SlotSize;\
-	static constexpr ___size_t RecordSize_t_Size = PAGE_T::RecordSize_t_Size
+	static constexpr ___size_t RecordSize_t_Size = PAGE_T::RecordSize;\
+	static constexpr ___size_t LargePageRecordSize = PAGE_T::LargePageRecordSize
 
 
 //기본 세팅 - 슬롯 1 - 레코드 1 ( 그래서 레코드 사이즈 필요없다. 처리 두가지 필요)
@@ -570,10 +572,10 @@ public:
     void add_list_sp(adj_list_elem_t& elem_arr);
 
     /// Add list for a head of Large Pages (LP-head)
-  //  void add_list_lp_head(___size_t record_size, adj_list_elem_t* elem_arr, ___size_t num_elems_in_page);
+    void add_list_lp_head(size_t record_size, adj_list_elem_t& elem_arr);
     /// Add list for extended part of Large pages (LP-ext)
- //   void add_list_lp_ext(adj_list_elem_t* elem_arr, ___size_t num_elems_in_page);
-
+    void add_list_lp_ext(adj_list_elem_t& elem_arr);
+	
     /// Add dummy list
   //  void add_dummy_list_sp(offset_t slot_offset, ___size_t record_size);
   //  void add_dummy_list_lp_head(___size_t record_size, ___size_t num_elems_in_page);
@@ -703,24 +705,24 @@ void __MDF_SLOTTED_PAGE_BUILDER::add_list_sp(adj_list_elem_t& elem_arr)
     this->footer.front += static_cast<decltype(this->footer.front)>(sizeof(adj_list_elem_t)+ elem_arr.data_size);
 	
 }
-/*
+
 __MDF_SLOTTED_PAGE_TEMPLATE
-void __MDF_SLOTTED_PAGE_BUILDER::add_list_lp_head(___size_t record_size, adj_list_elem_t* elem_arr, ___size_t num_elems_in_page)
+void __MDF_SLOTTED_PAGE_BUILDER::add_list_lp_head(size_t record_size, adj_list_elem_t& elem_arr)
 {
-    slot_t& slot = this->slot(0);
-    this->record_size(slot) = static_cast<record_size_t>(record_size);
-    memmove(this->list(slot), elem_arr, sizeof(adj_list_elem_t) * num_elems_in_page);
-    this->footer.front += static_cast<decltype(this->footer.front)>(sizeof(adj_list_elem_t) * num_elems_in_page);
-}*/
-/*
-__MDF_SLOTTED_PAGE_TEMPLATE
-void __MDF_SLOTTED_PAGE_BUILDER::add_list_lp_ext(adj_list_elem_t* elem_arr, ___size_t num_elems_in_page)
-{
-slot_t& slot = this->slot(0);
-memmove(this->list_ext(slot), elem_arr, sizeof(adj_list_elem_t) * num_elems_in_page);
-this->footer.front += static_cast<decltype(this->footer.front)>(sizeof(adj_list_elem_t) * num_elems_in_page);
+    //slot_t& slot = this->slot(0);
+   // this->record_size(slot) = static_cast<record_size_t>(record_size);
+    memmove(this->front(), &elem_arr, sizeof(adj_list_elem_t) + record_size);
+    this->footer.front += static_cast<decltype(this->footer.front)>(sizeof(adj_list_elem_t) + record_size);
 }
-*/
+
+__MDF_SLOTTED_PAGE_TEMPLATE
+void __MDF_SLOTTED_PAGE_BUILDER::add_list_lp_ext(adj_list_elem_t& elem_arr)
+{
+//slot_t& slot = this->slot(0);
+memmove(this->front(), &elem_arr, sizeof(adj_list_elem_t) + elem_arr.data_size);
+this->footer.front += static_cast<decltype(this->footer.front)>(sizeof(adj_list_elem_t) + elem_arr.data_size);
+}
+
 
 /*
 __MDF_SLOTTED_PAGE_TEMPLATE
